@@ -8,12 +8,12 @@ Extracts 6 fields from Egyptian national ID card photos using PaddleOCR (Arabic 
 
 | Arabic key | Field | Example |
 |---|---|---|
-| الاسم بالكامل | Full name | اشرف عبدالعزيز محمد حسنين |
-| الرقم القومي | National ID (14 digits) | ٢٦٦٠٨٣١٠١٠٠٣٩٧ |
-| تاريخ الميلاد | Date of birth | ١٩٦٦/٠٨/٣١ |
-| العنوان بالكامل | Street address | ١٧ ش منصور عطفة رامز لاظوغلى |
-| المنطقة والمحافظة | District & governorate | السيدة زينب القاهرة |
-| رقم البطاقة | Card serial number | KP1547505 |
+| الاسم بالكامل | Full name |   |
+| الرقم القومي | National ID (14 digits) |  |
+| تاريخ الميلاد | Date of birth |  |
+| العنوان بالكامل | Street address |  |
+| المنطقة والمحافظة | District & governorate | |
+| رقم البطاقة | Card serial number |  |
 
 ---
 
@@ -49,14 +49,7 @@ result = extract_id_fields("id_photo.jpg", verbose=False)
 
 ```python
 # Output
-{
-  'الاسم بالكامل':      'اشرف عبدالعزيز محمد حسنين',
-  'الرقم القومي':       '٢٦٦٠٨٣١٠١٠٠٣٩٧',
-  'تاريخ الميلاد':     '١٩٦٦/٠٨/٣١',
-  'العنوان بالكامل':    '١٧ ش منصور عطفة رامز لاظوغلى',
-  'المنطقة والمحافظة': 'السيدة زينب القاهرة',
-  'رقم البطاقة':       'KP1547505',
-}
+
 ```
 
 ---
