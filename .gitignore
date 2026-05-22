@@ -1,0 +1,12 @@
+# Secrets
+**/.env
+# Large data files
+arabic LLM FINAL/Data/archive.zip
+arabic LLM FINAL/Data/
+# OCR virtual environment
+OCR 2/OCR/venv/
+OCR 2/OCR/__pycache__/
+*.pyc
+# Flutter build artifacts
+build/
+.dart_tool/

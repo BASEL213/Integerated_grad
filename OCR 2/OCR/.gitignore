@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*_processed.jpg
+ocr_results.json
+test_result*.txt
+verbose_*.txt
