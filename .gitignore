@@ -1,12 +1,77 @@
-# Secrets
-**/.env
-# Large data files
-arabic LLM FINAL/Data/archive.zip
-arabic LLM FINAL/Data/
-# OCR virtual environment
-OCR 2/OCR/venv/
-OCR 2/OCR/__pycache__/
-*.pyc
-# Flutter build artifacts
-build/
+# ── Flutter / Dart ────────────────────────────────────────────────────────────
 .dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.g.dart
+*.freezed.dart
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+*.jks
+
+# iOS / macOS
+ios/.symlinks/
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Runner.xcworkspace/xcuserdata/
+macos/.symlinks/
+macos/Pods/
+
+# Web
+web/firebase-messaging-sw.js
+
+# ── Python / OCR backend ──────────────────────────────────────────────────────
+# Virtual environment (1.1 GB — never commit)
+**/venv/
+**/.venv/
+**/env/
+
+# Byte-compiled / cached
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Secrets — NEVER commit
+.env
+.env.*
+*.env
+secrets.py
+
+# OCR runtime artefacts
+**/server.log
+**/server_err.log
+**/ocr_result*.json
+**/final_result.json
+**/verify_result.json
+**/gemini_raw.txt
+
+# PaddleOCR model cache (downloaded locally by paddlex)
+.paddlex/
+
+# Jupyter
+*.ipynb_checkpoints
+.ipynb_checkpoints/
+
+# ── Arabic LLM training data (too large for GitHub) ───────────────────────────
+# The archive.zip is 169 MB (over GitHub's 100 MB limit) and the 720 PNG
+# training images are ~220 MB. Download them from Kaggle separately.
+arabic LLM FINAL/Data/archive.zip
+arabic LLM FINAL/Data/archive/
+
+# ── General ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.orig
+*.bak
+*.tmp
+*.log

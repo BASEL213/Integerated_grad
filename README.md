@@ -1,6 +1,6 @@
 # Findoor — Government Housing Portal
 
-A Flutter mobile application for Egypt's government housing services, featuring an AI-powered Egyptian National ID (NID) scanner that auto-fills registration forms using OCR.
+A Flutter mobile application for Egypt's government housing services, featuring an AI-powered Egyptian National ID (NID) scanner that auto-fills registration forms using OCR and a built-in Arabic AI chatbot.
 
 ---
 
@@ -8,22 +8,28 @@ A Flutter mobile application for Egypt's government housing services, featuring 
 
 ```
 FinalGRAD-mobile/
-├── lib/                        # Flutter source code
-│   ├── core/                   # Theme, app entry
+├── lib/                              # Flutter source code
+│   ├── core/                         # Theme, app entry point
 │   └── features/
-│       ├── auth/               # Login, Register, Forgot Password
-│       ├── home/               # Home, Profile, Documents Vault
-│       │   └── nid_scan_screen.dart   # NID OCR scanner screen
+│       ├── auth/                     # Login, Register, Forgot Password
+│       ├── home/                     # Home, Profile, Documents Vault
+│       │   └── nid_scan_screen.dart  # NID OCR scanner screen
 │       └── splash/
-├── android/                    # Android config & permissions
+├── android/                          # Android configuration
+├── ios/                              # iOS configuration
 ├── OCR 2/
 │   └── OCR/
-│       ├── egyptian_id_ocr.py  # Core OCR pipeline (PaddleOCR)
-│       ├── flask_api.py        # REST API wrapping the OCR
-│       ├── enhance.py          # Image preprocessing
-│       └── app.py              # Gradio UI (for standalone testing)
-└── arabic LLM FINAL/           # AI chatbot backend
+│       ├── flask_api.py              # REST API (Flask)
+│       ├── llm_extractor.py          # Two-pass LLM extraction engine
+│       ├── egyptian_id_ocr.py        # PaddleOCR offline fallback
+│       ├── enhance.py                # Image preprocessing utilities
+│       ├── TECHNICAL.md              # Deep-dive: how the OCR works
+│       └── tests/                    # Sample NID images for testing
+└── arabic LLM FINAL/                 # Arabic AI chatbot backend
 ```
+
+> **OCR technical documentation:** [`OCR 2/OCR/TECHNICAL.md`](OCR%202/OCR/TECHNICAL.md)
+> Covers the two-pass LLM architecture, all challenges faced, how they were solved, and future improvement plans.
 
 ---
 
@@ -33,7 +39,7 @@ FinalGRAD-mobile/
 |---|---|
 | Flutter | 3.x stable |
 | Dart | 3.x |
-| Python | 3.9 – 3.11 |
+| Python | 3.9 – 3.13 |
 | pip | latest |
 | Android Studio / emulator | Any recent version |
 
@@ -41,29 +47,32 @@ FinalGRAD-mobile/
 
 ## Step 1 — Run the OCR API Server
 
-The Flutter app sends card images to a local Flask server for OCR processing.
+The Flutter app sends card images to a local Flask server for processing.
 **Start this before launching the app.**
 
-### Install Python dependencies
+### Install dependencies
 
 ```bash
 cd "OCR 2/OCR"
-pip install flask flask-cors paddlepaddle paddleocr opencv-python-headless numpy python-dotenv
+pip install flask flask-cors paddlepaddle paddleocr opencv-python-headless numpy \
+            python-dotenv google-genai groq
 ```
 
-> If you have a GPU, install `paddlepaddle-gpu` instead of `paddlepaddle`.
+### Configure API keys (recommended for fast mode)
 
-### (Optional) Enable the Groq Vision fallback
-
-Create a file named `.env` inside `OCR 2/OCR/`:
+Create `OCR 2/OCR/.env` — **never commit this file**:
 
 ```
+# Gemini key (best Arabic OCR, free at aistudio.google.com/apikey)
+GOOGLE_API_KEY=your_google_api_key_here
+
+# Groq key (fast fallback, free at console.groq.com)
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
-This enables a Groq Vision LLM fallback for images where PaddleOCR fails to extract all fields.
+Without keys the server uses PaddleOCR (~220 s per request, fully offline).
 
-### Start the server
+### Start
 
 ```bash
 cd "OCR 2/OCR"
@@ -73,28 +82,24 @@ python flask_api.py
 Expected output:
 
 ```
+INFO  LLM extraction ENABLED -- primary provider: Gemini
 INFO  Starting NID OCR API on 0.0.0.0:5001
  * Running on http://127.0.0.1:5001
  * Running on http://192.168.x.x:5001
 ```
 
-### Verify it is running
+### Verify
 
 ```bash
 curl http://localhost:5001/health
-```
-
-Expected response:
-
-```json
-{ "status": "ok", "service": "nid-ocr" }
+# {"status": "ok", "service": "nid-ocr"}
 ```
 
 ---
 
 ## Step 2 — Configure the API URL in Flutter
 
-Open `lib/features/home/nid_scan_screen.dart` and find this near the top:
+Open [`lib/features/home/nid_scan_screen.dart`](lib/features/home/nid_scan_screen.dart) and find:
 
 ```dart
 String get _apiBase =>
@@ -107,66 +112,46 @@ String get _apiBase =>
 | Android emulator | `http://10.0.2.2:5001` — already set |
 | Physical Android device | Change to your machine's LAN IP e.g. `http://192.168.1.x:5001` |
 
-To find your machine's LAN IP on Windows:
-
-```cmd
-ipconfig
-```
-
-Look for **IPv4 Address** under your active network adapter.
+To find your LAN IP on Windows: run `ipconfig` and look for **IPv4 Address**.
 
 ---
 
 ## Step 3 — Run the Flutter App
 
-### Install Flutter dependencies
-
 ```bash
 flutter pub get
-```
-
-### Android emulator
-
-```bash
-flutter run
-```
-
-### Chrome (web)
-
-```bash
-flutter run -d chrome --web-port 8080
-```
-
-### Physical Android device
-
-1. Enable **Developer Options** and **USB Debugging** on your phone
-2. Connect via USB
-3. Run:
-
-```bash
-flutter devices        # confirm your device appears
-flutter run
+flutter run            # Android emulator
+flutter run -d chrome  # Chrome
 ```
 
 ---
 
 ## Step 4 — Using the NID Scanner
 
-### From the Registration screen
-
 1. Open the app and tap **Create Account**
-2. Tap **"Scan NID to auto-fill Name & ID"** below the National ID field
-3. Choose **Capture with Camera** or **Upload from Gallery**
-4. If using camera: align your NID card inside the blue frame and tap the capture button
-5. Review extracted fields, correct any mistakes, then tap **Confirm**
-6. Full Name and National ID are automatically filled in the form
+2. Tap **"Scan NID to auto-fill"**
+3. Choose a clear photo of your NID card from the gallery
+4. Review the extracted fields; correct any mistakes
+5. Tap **Confirm** — Full Name, National ID, and other fields are auto-filled
 
-### From the Documents Vault
+### Tips for best results
 
-1. Navigate to **Documents Vault** from the home screen
-2. Expand **National ID (Front)**
-3. Tap **Scan / Upload**
-4. Choose **Scan with NID Scanner** or **Upload from Gallery**
+- Place the card on a flat, dark surface
+- Use good even lighting — avoid glare and shadows
+- Hold the camera directly above the card, parallel to it
+- Make sure the entire card is visible in the frame
+
+---
+
+## OCR Performance
+
+| Mode | Speed | Internet Required |
+|---|---|---|
+| LLM (Gemini 2.5 Flash) | **~5–15 s** | Yes (free API key) |
+| LLM (Groq fallback) | ~10–20 s | Yes (free API key) |
+| PaddleOCR (offline) | ~220 s on CPU | No |
+
+The server automatically selects the best available provider.
 
 ---
 
@@ -174,75 +159,50 @@ flutter run
 
 **Base URL:** `http://localhost:5001`
 
-### `GET /health`
+### POST /ocr/extract
 
-```json
-{ "status": "ok", "service": "nid-ocr" }
-```
-
-### `POST /ocr/extract`
-
-Extracts all fields from an Egyptian National ID image.
-
-**Request:** `multipart/form-data`
-
-| Field | Type | Description |
-|---|---|---|
-| `image` | file | JPG, PNG, WEBP, or BMP photo of the NID |
+**Request:** `multipart/form-data`, field `image` (JPG, PNG, WEBP, or BMP; max 15 MB)
 
 **Success response:**
 
 ```json
 {
   "success": true,
-  "extracted_count": 5,
+  "extracted_count": 6,
   "total_fields": 6,
+  "method": "gemini",
+  "request_id": "fdc504bd",
   "data": {
-    "الاسم بالكامل":      "اشرف عبدالعزيز محمد حسنين",
-    "الرقم القومي":       "26608310100397",
-    "تاريخ الميلاد":     "1966/08/31",
-    "العنوان بالكامل":    "17 ش منصور عطفة رامز لاظوغلى",
+    "الاسم بالكامل":      "باسل اشرف عبدالعزيز محمد حسنين",
+    "الرقم القومي":       "٣٠١١٠٢١٠١٠٤٧٢٩",
+    "تاريخ الميلاد":     "٢٠٠١/١٠/٢١",
+    "العنوان بالكامل":    "٧ ش منصور عطفة رامز لاظوغلى",
     "المنطقة والمحافظة": "السيدة زينب القاهرة",
-    "رقم البطاقة":       "KP1547505"
+    "رقم البطاقة":       "1M4729408"
   }
 }
 ```
 
-**Error response:**
+### GET /health
+```json
+{"status": "ok", "service": "nid-ocr"}
+```
 
+### GET /status
 ```json
 {
-  "success": false,
-  "error": "OCR processing error: ..."
+  "llm_enabled": true,
+  "llm_provider": "gemini-2.5-flash",
+  "expected_latency": "3-15 s",
+  "max_upload_mb": 15
 }
 ```
 
 ---
 
-## Tips for Best OCR Results
+## Design Reference
 
-- Place the card on a **flat, dark surface**
-- Use **good lighting** — avoid glare and shadows
-- Hold the phone **directly above** the card, parallel to it
-- Make sure the **entire card fits inside the frame** before shooting
-- If fewer than 4 fields are detected, retake in better lighting
-
----
-
-## Known Limitations
-
-| Issue | Details |
-|---|---|
-| Digit confusion | OCR occasionally confuses `٠↔٦`, `١↔٧` on security-pattern backgrounds |
-| Old card layouts (pre-2008) | Zone coordinates are tuned for modern cards only |
-| Physical device URL | Must be updated manually to your machine's LAN IP (see Step 2) |
-| Camera on web | Works via browser camera API; overlay animations are smoother on native mobile |
-
----
-
-## App Design
-
-| Role | Value |
+| Token | Value |
 |---|---|
 | Primary color | `#1E88E5` |
 | Dark variant | `#1565C0` |

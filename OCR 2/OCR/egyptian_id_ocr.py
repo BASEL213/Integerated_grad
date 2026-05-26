@@ -206,8 +206,9 @@ def _fix_digit_letter_confusion(text: str) -> str:
 
 
 def _valid_date(y, mo, d) -> bool:
+    import datetime as _dt
     try:
-        return 1900 <= int(y) <= 2025 and 1 <= int(mo) <= 12 and 1 <= int(d) <= 31
+        return 1900 <= int(y) <= _dt.date.today().year and 1 <= int(mo) <= 12 and 1 <= int(d) <= 31
     except (ValueError, TypeError):
         return False
 
@@ -1311,12 +1312,16 @@ def extract_id_fields(image_path: str,
             print("P1 complete — fast path")
     else:
         if not _nid_ok:
-            # ── Pass 2a: NID right+left halves at 3x (each half is narrow enough
-            #    to allow 3x upscaling vs the full zone which caps at 2x)
+            # ── Pass 2a: NID right+left halves at 3x — standard AND HSV saturation
+            #    mask run together so black-ink tokens are available from the first
+            #    NID pass (security-pattern backgrounds fool the standard pass but
+            #    not the mask, and vice-versa on faded prints).
             if verbose:
-                print("P2a NID zone (split 3x)...")
+                print("P2a NID zone (split 3x + sat-mask)...")
             extra += _zone_ocr(processed, 'nid_r', scale=3, binary=False)
             extra += _zone_ocr(processed, 'nid_l', scale=3, binary=False)
+            extra += _zone_ocr(processed, 'nid_r', scale=3, saturation_mask=True)
+            extra += _zone_ocr(processed, 'nid_l', scale=3, saturation_mask=True)
 
             p2a_check = _deduplicate_ocr(p1 + extra)
             _nid_try = extract_fields(p2a_check, card_h=ph).get('الرقم القومي') or ''
@@ -1331,21 +1336,11 @@ def extract_id_fields(image_path: str,
                 _nid_try2 = extract_fields(p2b_check, card_h=ph).get('الرقم القومي') or ''
 
                 if not _validate_nid(re.sub(r'\D', '', _nid_try2.translate(_AR2LA))):
-                    # ── Pass 2c: HSV saturation mask — black ink vs colorful bg
+                    # ── Pass 2c: wider bottom zone (last resort, more context)
                     if verbose:
-                        print("P2c NID saturation mask...")
-                    extra += _zone_ocr(processed, 'nid_r', scale=3, saturation_mask=True)
-                    extra += _zone_ocr(processed, 'nid_l', scale=3, saturation_mask=True)
-
-                    p2c_check = _deduplicate_ocr(p1 + extra)
-                    _nid_try3 = extract_fields(p2c_check, card_h=ph).get('الرقم القومي') or ''
-
-                    if not _validate_nid(re.sub(r'\D', '', _nid_try3.translate(_AR2LA))):
-                        # ── Pass 2d: wider bottom zone (last resort, more context)
-                        if verbose:
-                            print("P2d bottom zone 3x...")
-                        extra += _zone_ocr(processed, 'bottom', scale=3,
-                                           binary=False, for_digits=False)
+                        print("P2c bottom zone 3x...")
+                    extra += _zone_ocr(processed, 'bottom', scale=3,
+                                       binary=False, for_digits=False)
 
         # Count high-conf Arabic word tokens P1 found in the name zone.
         # If P1 already has ≥4 such words, running P3 adds interference tokens
