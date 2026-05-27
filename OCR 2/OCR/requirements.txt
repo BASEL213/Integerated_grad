@@ -1,0 +1,25 @@
+# ── Egyptian NID OCR — Flask API requirements ─────────────────────────────────
+# Install: pip install -r requirements.txt
+# Python 3.10+ required
+
+# ── Web framework ─────────────────────────────────────────────────────────────
+flask>=3.0.3
+flask-cors>=4.0.1
+python-dotenv>=1.0.1
+
+# ── LLM providers (at least one API key required for fast mode) ───────────────
+# Gemini (preferred): set GOOGLE_API_KEY in .env
+google-genai>=1.0.0
+# Groq fallback: set GROQ_API_KEY in .env
+groq>=1.0.0
+
+# ── Image processing ──────────────────────────────────────────────────────────
+# Use headless variant on servers (no display required)
+opencv-python-headless>=4.10.0
+numpy>=2.0.0
+Pillow>=10.0.0
+
+# ── PaddleOCR (offline fallback — heavy, ~50 MB model download on first run) ──
+paddlepaddle>=3.0.0
+paddleocr>=3.5.0
+paddlex>=3.5.0

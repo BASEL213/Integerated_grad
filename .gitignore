@@ -66,6 +66,17 @@ secrets.py
 arabic LLM FINAL/Data/archive.zip
 arabic LLM FINAL/Data/archive/
 
+# ── Arabic LLM runtime data ───────────────────────────────────────────────────
+# ChromaDB vector store (rebuilt on first run)
+arabic LLM FINAL/chroma_db/
+arabic LLM FINAL/chroma.sqlite3
+# UUID-named ChromaDB collection folders
+arabic LLM FINAL/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-*/
+# Chat logs & uploads (runtime-generated)
+arabic LLM FINAL/logs/
+**/chat_logs.jsonl
+**/uploads/
+
 # ── General ───────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

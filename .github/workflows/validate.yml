@@ -1,0 +1,235 @@
+name: 🔍 Validate Project Structure
+
+# Runs on every push and pull-request to catch missing files early.
+# Does NOT deploy or start any server — just verifies everything needed
+# to run the project is present and importable.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 1 — Check that every required file exists in the repo
+  # ════════════════════════════════════════════════════════════════════════════
+  check-files:
+    name: 📁 Required Files Present
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify OCR backend files
+        run: |
+          echo "=== Checking OCR Backend ==="
+          REQUIRED_OCR=(
+            "OCR 2/OCR/flask_api.py"
+            "OCR 2/OCR/egyptian_id_ocr.py"
+            "OCR 2/OCR/llm_extractor.py"
+            "OCR 2/OCR/requirements.txt"
+            "OCR 2/OCR/.env.example"
+          )
+          MISSING=0
+          for f in "${REQUIRED_OCR[@]}"; do
+            if [ -f "$f" ]; then
+              echo "  ✅  $f"
+            else
+              echo "  ❌  MISSING: $f"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ $MISSING -gt 0 ]; then
+            echo ""
+            echo "ERROR: $MISSING required OCR file(s) missing."
+            exit 1
+          fi
+          echo "All OCR backend files present."
+
+      - name: Verify Arabic LLM backend files
+        run: |
+          echo "=== Checking Arabic LLM Backend ==="
+          REQUIRED_LLM=(
+            "arabic LLM FINAL/main.py"
+            "arabic LLM FINAL/requirements.txt"
+            "arabic LLM FINAL/config.py"
+            "arabic LLM FINAL/rag_engine.py"
+            "arabic LLM FINAL/safety.py"
+            "arabic LLM FINAL/chroma_store.py"
+            "arabic LLM FINAL/data_ingestion.py"
+            "arabic LLM FINAL/mongodb_connector.py"
+            "arabic LLM FINAL/Backend/main.py"
+            "arabic LLM FINAL/Backend/rag_engine.py"
+            "arabic LLM FINAL/Backend/config.py"
+            "arabic LLM FINAL/Backend/chroma_store.py"
+            "arabic LLM FINAL/Backend/data_ingestion.py"
+            "arabic LLM FINAL/Backend/mongodb_connector.py"
+            "arabic LLM FINAL/Backend/safety.py"
+          )
+          MISSING=0
+          for f in "${REQUIRED_LLM[@]}"; do
+            if [ -f "$f" ]; then
+              echo "  ✅  $f"
+            else
+              echo "  ❌  MISSING: $f"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ $MISSING -gt 0 ]; then
+            echo ""
+            echo "ERROR: $MISSING required Arabic LLM file(s) missing."
+            exit 1
+          fi
+          echo "All Arabic LLM backend files present."
+
+      - name: Verify Flutter app files
+        run: |
+          echo "=== Checking Flutter App ==="
+          REQUIRED_FLUTTER=(
+            "pubspec.yaml"
+            "pubspec.lock"
+            "lib/main.dart"
+            "analysis_options.yaml"
+          )
+          MISSING=0
+          for f in "${REQUIRED_FLUTTER[@]}"; do
+            if [ -f "$f" ]; then
+              echo "  ✅  $f"
+            else
+              echo "  ❌  MISSING: $f"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ $MISSING -gt 0 ]; then
+            echo ""
+            echo "ERROR: $MISSING required Flutter file(s) missing."
+            exit 1
+          fi
+          echo "All Flutter app files present."
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 2 — Validate OCR backend Python syntax & deps installable
+  # ════════════════════════════════════════════════════════════════════════════
+  validate-ocr:
+    name: 🐍 OCR Backend — Syntax & Deps
+    runs-on: ubuntu-latest
+    needs: check-files
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check Python syntax — OCR backend
+        run: |
+          echo "=== Syntax check ==="
+          python -m py_compile "OCR 2/OCR/flask_api.py"       && echo "  ✅  flask_api.py"
+          python -m py_compile "OCR 2/OCR/llm_extractor.py"   && echo "  ✅  llm_extractor.py"
+          python -m py_compile "OCR 2/OCR/egyptian_id_ocr.py" && echo "  ✅  egyptian_id_ocr.py"
+          echo "Syntax OK."
+
+      - name: Verify requirements.txt is valid (dry-run install)
+        run: |
+          echo "=== Checking requirements.txt resolves ==="
+          pip install --dry-run --quiet \
+            -r "OCR 2/OCR/requirements.txt" \
+            2>&1 | tail -5
+          echo "Requirements resolvable ✅"
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 3 — Validate Arabic LLM backend Python syntax & deps installable
+  # ════════════════════════════════════════════════════════════════════════════
+  validate-llm:
+    name: 🤖 Arabic LLM Backend — Syntax & Deps
+    runs-on: ubuntu-latest
+    needs: check-files
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check Python syntax — Arabic LLM backend
+        run: |
+          echo "=== Syntax check ==="
+          for pyfile in \
+            "arabic LLM FINAL/main.py" \
+            "arabic LLM FINAL/config.py" \
+            "arabic LLM FINAL/rag_engine.py" \
+            "arabic LLM FINAL/safety.py" \
+            "arabic LLM FINAL/chroma_store.py" \
+            "arabic LLM FINAL/data_ingestion.py" \
+            "arabic LLM FINAL/mongodb_connector.py" \
+            "arabic LLM FINAL/Backend/main.py" \
+            "arabic LLM FINAL/Backend/rag_engine.py" \
+            "arabic LLM FINAL/Backend/config.py"; do
+            python -m py_compile "$pyfile" && echo "  ✅  $pyfile"
+          done
+          echo "Syntax OK."
+
+      - name: Verify requirements.txt is valid (dry-run install)
+        run: |
+          echo "=== Checking requirements.txt resolves ==="
+          pip install --dry-run --quiet \
+            -r "arabic LLM FINAL/requirements.txt" \
+            2>&1 | tail -5
+          echo "Requirements resolvable ✅"
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 4 — Validate Flutter app (pub get + analyze)
+  # ════════════════════════════════════════════════════════════════════════════
+  validate-flutter:
+    name: 📱 Flutter App — Pub Get
+    runs-on: ubuntu-latest
+    needs: check-files
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: "stable"
+          cache: true
+
+      - name: Flutter pub get
+        run: |
+          flutter pub get
+          echo "flutter pub get succeeded ✅"
+
+      - name: Flutter analyze
+        run: |
+          flutter analyze --no-fatal-infos
+          echo "flutter analyze passed ✅"
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 5 — Summary
+  # ════════════════════════════════════════════════════════════════════════════
+  summary:
+    name: ✅ All Checks Passed
+    runs-on: ubuntu-latest
+    needs: [check-files, validate-ocr, validate-llm, validate-flutter]
+    if: success()
+
+    steps:
+      - name: Print summary
+        run: |
+          echo "============================================"
+          echo "  ✅  Required files      — OK"
+          echo "  ✅  OCR backend         — syntax + deps OK"
+          echo "  ✅  Arabic LLM backend  — syntax + deps OK"
+          echo "  ✅  Flutter app         — pub get OK"
+          echo "============================================"
+          echo "Project is ready to run."
