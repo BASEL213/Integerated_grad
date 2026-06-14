@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
+import 'package:findoor_app2/core/api_config.dart';
 import 'application_page.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
@@ -20,13 +22,16 @@ class _HomeScreenState extends State<HomeScreen> {
   // Professional color palette
   static const Color primaryBlue = Color(0xFF1E88E5);
 
-  String _userName      = '';
-  String _trackingCode  = '';
+  String _userName     = '';
+  String _trackingCode = '';
+  List<Map<String, dynamic>> _featuredProjects = [];
+  bool _loadingFeatured = false;
 
   @override
   void initState() {
     super.initState();
     _loadPrefs();
+    _fetchFeaturedProjects();
   }
 
   Future<void> _loadPrefs() async {
@@ -38,30 +43,32 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
+  Future<void> _fetchFeaturedProjects() async {
+    setState(() => _loadingFeatured = true);
+    try {
+      final res = await Dio().get('${ApiConfig.nodeApi}/projects',
+          queryParameters: {'limit': 5});
+      final list = res.data is List
+          ? res.data as List
+          : (res.data['data'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _featuredProjects = list
+              .map((p) => Map<String, dynamic>.from(p as Map))
+              .toList();
+        });
+      }
+    } catch (_) {
+      // keep empty — carousel shows placeholder
+    } finally {
+      if (mounted) setState(() => _loadingFeatured = false);
+    }
+  }
   static const Color darkBlue = Color(0xFF1565C0);
   static const Color premiumBackground = Color(0xFFF8FAFC);
   static const Color darkText = Color(0xFF263238);
 
-  final List<Map<String, String>> properties = [
-    {
-      'title': 'The Grand Residence',
-      'location': 'New Cairo, Egypt',
-      'price': '\$ 3,450',
-      'beds': '4 Bd',
-      'baths': '3 Ba',
-      'sqft': '320 SqFt',
-      'image': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=600',
-    },
-    {
-      'title': 'The Urban Loft',
-      'location': 'Downtown Cairo, Egypt',
-      'price': '\$ 2,100',
-      'beds': '2 Bd',
-      'baths': '1 Ba',
-      'sqft': '180 SqFt',
-      'image': 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=600',
-    },
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -271,76 +278,121 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPropertyCarousel() {
+    if (_loadingFeatured) {
+      return const SizedBox(
+        height: 380,
+        child: Center(child: CircularProgressIndicator(color: primaryBlue)),
+      );
+    }
+    if (_featuredProjects.isEmpty) {
+      return SizedBox(
+        height: 200,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.apartment_outlined, size: 48, color: Colors.grey.shade300),
+              const SizedBox(height: 12),
+              Text('No projects available',
+                  style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
     return SizedBox(
       height: 380,
       child: PageView.builder(
         controller: PageController(viewportFraction: 0.9),
-        itemCount: properties.length,
+        itemCount: _featuredProjects.length,
         itemBuilder: (context, index) {
-          final data = properties[index];
-          return Tooltip(
-            message: "Click to view details",
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => PropertyDetailsPage(property: data)),
-                );
-              },
-              borderRadius: BorderRadius.circular(32),
-              child: Container(
-                margin: const EdgeInsets.only(right: 20, bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(32),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 10)),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Stack(
-                        children: [
-                          Image.network(data['image']!, height: 220, width: double.infinity, fit: BoxFit.cover),
-                          Positioned(
-                            top: 16,
-                            left: 16,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(color: primaryBlue, borderRadius: BorderRadius.circular(20)),
-                              child: const Text("FOR SALE",
-                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                            ),
+          final p = _featuredProjects[index];
+          final title    = (p['name'] ?? p['title'] ?? 'Project').toString();
+          final location = (p['location'] ?? p['governorate'] ?? 'Egypt').toString();
+          final price    = p['price'] != null ? 'EGP ${p['price']}' : 'On request';
+          final imageUrl = (p['imageUrl'] ?? p['image'] ?? '').toString();
+          return InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PropertyDetailsPage(property: {
+                  'title':    title,
+                  'location': location,
+                  'price':    price,
+                  'beds':     (p['bedrooms']  ?? p['beds']  ?? '—').toString(),
+                  'baths':    (p['bathrooms'] ?? p['baths'] ?? '—').toString(),
+                  'sqft':     (p['area']      ?? p['sqft']  ?? '—').toString(),
+                  'image':    imageUrl,
+                }),
+              ),
+            ),
+            borderRadius: BorderRadius.circular(32),
+            child: Container(
+              margin: const EdgeInsets.only(right: 20, bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10)),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      children: [
+                        imageUrl.isNotEmpty
+                            ? Image.network(imageUrl,
+                                height: 220,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _projectImagePlaceholder())
+                            : _projectImagePlaceholder(),
+                        Positioned(
+                          top: 16,
+                          left: 16,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                                color: primaryBlue,
+                                borderRadius: BorderRadius.circular(20)),
+                            child: const Text('SOCIAL HOUSING',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2)),
                           ),
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: darkText)),
+                          Text(location,
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 12)),
+                          const SizedBox(height: 16),
+                          Row(children: [
+                            _buildPropertyDetailChip(price),
+                          ]),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(data['title']!,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: darkText)),
-                            Text(data['location']!,
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                _buildPropertyDetailChip(data['beds']!),
-                                const SizedBox(width: 8),
-                                _buildPropertyDetailChip(data['baths']!),
-                                const SizedBox(width: 8),
-                                _buildPropertyDetailChip(data['sqft']!),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -349,6 +401,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _projectImagePlaceholder() => Container(
+        height: 220,
+        width: double.infinity,
+        color: Colors.grey.shade100,
+        child: Icon(Icons.apartment_rounded,
+            size: 60, color: Colors.grey.shade300),
+      );
 
   Widget _buildPropertyDetailChip(String detail) {
     return Container(

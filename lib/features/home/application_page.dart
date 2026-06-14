@@ -32,8 +32,58 @@ class _ApplicationPageState extends State<ApplicationPage> {
   String? selectedFloor;
   String? selectedPaymentMethod;
 
+  List<String> _projectNames = [];
+  bool _loadingProjects = false;
+
   static const Color primaryBlue = Color(0xFF1E88E5);
   static const Color darkText = Color(0xFF263238);
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProjects();
+    _prefillFromPrefs();
+  }
+
+  Future<void> _prefillFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _fullNameController.text = prefs.getString('user_name')  ?? '';
+        _idController.text       = prefs.getString('user_nid')   ?? '';
+        _phoneController.text    = prefs.getString('user_phone') ?? '';
+        _emailController.text    = prefs.getString('user_email') ?? '';
+      });
+    }
+  }
+
+  Future<void> _fetchProjects() async {
+    setState(() => _loadingProjects = true);
+    try {
+      final res = await Dio().get('${ApiConfig.nodeApi}/projects');
+      final list = res.data is List
+          ? res.data as List
+          : (res.data['data'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _projectNames = list
+              .map((p) => (p['name'] ?? p['title'] ?? '').toString())
+              .where((n) => n.isNotEmpty)
+              .toList();
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _projectNames = [
+              'New Cairo Area',
+              'Zayed Towers',
+              'October Gardens',
+            ]);
+      }
+    } finally {
+      if (mounted) setState(() => _loadingProjects = false);
+    }
+  }
 
   // --- Functions ---
 
@@ -159,7 +209,18 @@ class _ApplicationPageState extends State<ApplicationPage> {
       children: [
         _sectionHeader(Icons.apartment_rounded, "Project Details"),
         const SizedBox(height: 20),
-        _buildDropdown("Preferred Project", ["New Cairo Area", "Zayed Towers", "October Gardens"], (v) => selectedProject = v),
+        _loadingProjects
+            ? const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: LinearProgressIndicator(color: primaryBlue),
+              )
+            : _buildDropdown(
+                "Preferred Project",
+                _projectNames.isEmpty
+                    ? ["New Cairo Area", "Zayed Towers", "October Gardens"]
+                    : _projectNames,
+                (v) => setState(() => selectedProject = v),
+              ),
         _buildDropdown("Unit Type", ["Studio", "2-Bedroom Apartment", "3-Bedroom Apartment"], (v) => selectedUnitType = v),
         _buildDropdown("Preferred Floor", ["Ground Floor", "Typical Floor", "Roof Floor"], (v) => selectedFloor = v),
         _buildDropdown("Payment Plan", ["Cash (Full)", "Installments (5 Years)", "Mortgage (20 Years)"], (v) => selectedPaymentMethod = v),

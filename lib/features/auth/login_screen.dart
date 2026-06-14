@@ -43,11 +43,14 @@ class _LoginScreenState extends State<LoginScreen> {
         },
       );
       if (res.statusCode == 200 && res.data['success'] == true) {
-        final token    = res.data['data']?['token']         as String? ?? '';
-        final userName = res.data['data']?['user']?['name'] as String? ?? '';
+        final token    = res.data['data']?['token']                as String? ?? '';
+        final u        = res.data['data']?['user'] as Map? ?? {};
         final prefs    = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
-        await prefs.setString('user_name',  userName);
+        await prefs.setString('auth_token',  token);
+        await prefs.setString('user_name',   u['name']       as String? ?? '');
+        await prefs.setString('user_email',  u['email']      as String? ?? '');
+        await prefs.setString('user_phone',  u['phone']      as String? ?? '');
+        await prefs.setString('user_nid',    u['nationalId'] as String? ?? '');
         if (mounted) {
           Navigator.pushReplacement(
             context,
