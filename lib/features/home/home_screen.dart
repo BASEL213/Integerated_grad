@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'application_page.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
@@ -18,6 +19,25 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // Professional color palette
   static const Color primaryBlue = Color(0xFF1E88E5);
+
+  String _userName      = '';
+  String _trackingCode  = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _userName     = prefs.getString('user_name')     ?? '';
+        _trackingCode = prefs.getString('tracking_code') ?? '';
+      });
+    }
+  }
   static const Color darkBlue = Color(0xFF1565C0);
   static const Color premiumBackground = Color(0xFFF8FAFC);
   static const Color darkText = Color(0xFF263238);
@@ -117,11 +137,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Hi Ahmed", style: TextStyle(color: Colors.grey, fontSize: 16)),
-              Text("Good Morning,",
+              Text(_userName.isNotEmpty ? 'Hi $_userName' : 'Hi there', style: const TextStyle(color: Colors.grey, fontSize: 16)),
+              const Text("Good Morning,",
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: darkText, letterSpacing: -0.5)),
             ],
           ),
@@ -202,7 +222,13 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 _buildSmallStatusCard("My Status", Icons.auto_graph, Colors.orange, "Track your application status", () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const StatusPage()));
+                  if (_trackingCode.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No application submitted yet.'), behavior: SnackBarBehavior.floating),
+                    );
+                    return;
+                  }
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => StatusPage(trackingCode: _trackingCode)));
                 }),
                 const SizedBox(height: 16),
                 _buildSmallStatusCard("E-Wallet", Icons.account_balance_wallet, Colors.green, "View balance and payments", () {

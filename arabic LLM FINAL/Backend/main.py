@@ -243,6 +243,24 @@ def api_sync():
         raise HTTPException(500, f"Sync failed: {str(e)}")
 
 
+# ── OCR Proxy ─────────────────────────────────────────────────────────────────
+
+@app.post("/ocr/extract", tags=["OCR"])
+async def ocr_proxy(image: UploadFile = File(...)):
+    """Forward NID image to the Flask OCR service on port 5001."""
+    import httpx
+    content = await image.read()
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                "http://127.0.0.1:5001/ocr/extract",
+                files={"image": (image.filename, content, image.content_type or "image/jpeg")},
+            )
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+    except httpx.ConnectError:
+        raise HTTPException(503, "OCR service unavailable — ensure the Flask OCR server is running on port 5001")
+
+
 # ── Health ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/health", tags=["System"])

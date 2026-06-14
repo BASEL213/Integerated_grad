@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:findoor_app2/core/api_config.dart';
 import 'documents_vault_screen.dart';
+import 'status_screen.dart';
 
 class ApplicationPage extends StatefulWidget {
   const ApplicationPage({super.key});
@@ -47,22 +51,51 @@ class _ApplicationPageState extends State<ApplicationPage> {
     }
   }
 
-  // الدالة المعدلة لحل مشكلة Context across async gaps
   Future<void> _submitToBackend() async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: primaryBlue)),
+      builder: (ctx) => const Center(child: CircularProgressIndicator(color: primaryBlue)),
     );
-
-    // محاكاة الاتصال بالـ API أو الباك إند
-    await Future.delayed(const Duration(seconds: 2));
-
-    // الحل: التأكد أن الـ Widget مازال موجوداً قبل استخدام Navigator
-    if (!mounted) return;
-
-    Navigator.pop(context); // إغلاق الـ Loading
-    _showSuccessDialog();
+    try {
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 20),
+      ));
+      final res = await dio.post(
+        '${ApiConfig.aiBase}/api/application/submit',
+        options: Options(headers: {'X-API-Key': ApiConfig.chatApiKey}),
+        data: {
+          'full_name':      _fullNameController.text.trim(),
+          'id_number':      _idController.text.trim(),
+          'project':        selectedProject,
+          'unit_type':      selectedUnitType,
+          'phone':          _phoneController.text.trim(),
+          'monthly_salary': int.tryParse(_incomeController.text.trim()) ?? 0,
+        },
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      if (res.statusCode == 201 && res.data['success'] == true) {
+        final code = res.data['tracking_code'] as String;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('tracking_code', code);
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => StatusPage(trackingCode: code)),
+        );
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      final msg = e.type == DioExceptionType.connectionError
+          ? 'Cannot reach AI server. Ensure FastAPI is running on port 5000.'
+          : (e.response?.data?['detail'] as String? ?? 'Submission failed. Please try again.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 
   @override
@@ -318,28 +351,4 @@ class _ApplicationPageState extends State<ApplicationPage> {
     );
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.green, size: 80),
-            const SizedBox(height: 20),
-            const Text("Success!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            const Text("Your application has been submitted to the housing department.", textAlign: TextAlign.center),
-            const SizedBox(height: 30),
-            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () {
-              Navigator.pop(context); // إغلاق الديالوج
-              Navigator.pop(context); // العودة للشاشة السابقة
-            }, child: const Text("Done"))),
-          ],
-        ),
-      ),
-    );
-  }
 }

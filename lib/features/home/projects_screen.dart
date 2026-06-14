@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'dart:developer' as developer;
+import 'package:findoor_app2/core/api_config.dart';
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
@@ -32,7 +33,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
       });
 
       // الرابط باستخدام الـ IP بتاعك لضمان الاتصال بالسيرفر من الموبايل
-      final response = await _dio.get('http://192.168.1.8:5000/api/projects');
+      final response = await _dio.get('${ApiConfig.nodeApi}/projects');
 
       if (response.statusCode == 200) {
         setState(() {

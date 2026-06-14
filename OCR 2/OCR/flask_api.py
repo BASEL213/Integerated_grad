@@ -260,9 +260,17 @@ def extract():
 
         # ── 2. PaddleOCR fallback (offline, ~220 s) ───────────────────────────
         if result is None:
-            from egyptian_id_ocr import extract_id_fields
-            result      = extract_id_fields(tmp_path, verbose=False, save_debug=False)
-            method_used = "paddle"
+            try:
+                from egyptian_id_ocr import extract_id_fields
+                result      = extract_id_fields(tmp_path, verbose=False, save_debug=False)
+                method_used = "paddle"
+            except ModuleNotFoundError:
+                return jsonify({
+                    "success":    False,
+                    "error":      "LLM could not read the image and PaddleOCR is not installed. "
+                                  "Please use a clearer, well-lit photo of the NID card.",
+                    "request_id": rid,
+                }), 503
 
         # ── Summarise ─────────────────────────────────────────────────────────
         extracted = sum(1 for v in result.values() if v)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:findoor_app2/core/api_config.dart';
 
 class ChatbotPage extends StatefulWidget {
   const ChatbotPage({super.key});
@@ -23,9 +24,8 @@ class _ChatbotPageState extends State<ChatbotPage> {
   static const Color primaryBlue = Color(0xFF1E88E5);
   static const Color darkText = Color(0xFF263238);
 
-  static const String _apiUrl = 'http://localhost:5000/api/chat';
-  static const String _apiKey =
-      '5b45743ddd3ded9ba2524b40cc5704b5d9839a3438a0534b4c07cfabe431eef2';
+  static String get _apiUrl => ApiConfig.chatUrl;
+  static String get _apiKey => ApiConfig.chatApiKey;
 
   final String _sessionId =
       'flutter_${DateTime.now().millisecondsSinceEpoch}';

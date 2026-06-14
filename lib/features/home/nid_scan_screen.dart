@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:findoor_app2/core/api_config.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -12,11 +12,8 @@ const Color _bg       = Color(0xFFF8FAFC);
 const Color _textDark = Color(0xFF263238);
 const Color _textMid  = Color(0xFF455A64);
 
-/// Web (Chrome): talks to localhost directly.
-/// Android emulator: 10.0.2.2 maps to the host machine's localhost.
-/// Physical device: change to your machine's LAN IP, e.g. 192.168.1.x
-String get _apiBase =>
-    kIsWeb ? 'http://localhost:5001' : 'http://10.0.2.2:5001';
+/// OCR goes through the FastAPI proxy on port 5000 (not Flask directly).
+String get _apiBase => ApiConfig.aiBase;
 
 // ─── State enum ──────────────────────────────────────────────────────────────
 
